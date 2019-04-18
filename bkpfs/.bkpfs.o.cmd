@@ -1,0 +1,1 @@
+cmd_fs/bkpfs/bkpfs.o := ld -m elf_x86_64  -z max-page-size=0x200000    -r -o fs/bkpfs/bkpfs.o fs/bkpfs/dentry.o fs/bkpfs/file.o fs/bkpfs/inode.o fs/bkpfs/main.o fs/bkpfs/super.o fs/bkpfs/lookup.o fs/bkpfs/mmap.o 

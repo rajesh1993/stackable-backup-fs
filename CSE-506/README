@@ -1,0 +1,114 @@
+/***********************************************************************************************
+						README
+						
+				    Operating Systems Assignment 2
+				 Submitted by : Rajesh Mohan (111498022)
+
+************************************************************************************************/
+
+Welcome!
+
+This document contains all the information about the assignment and its implementation.
+
+************************************************************************************************
+* FILES
+
+Important files where I have added code (Please ensure all are present):
+
+Kernel-land files:
+ - fs/bkpfs/file.c              -> This is where majority of the code lies (~1300 lines added)
+ - fs/bkpfs/main.c		-> Mount options were parsed here
+ - fs/bkpfs/bkpfs.h		-> Header for all source files
+ - fs/bkpfs/main.h		-> Header for global mount option
+ - include/uapi/linux/bkpfs.h   -> Header for ioctl
+
+User-land files:
+ - CSE-506/README     -> README file
+ - CSE-506/bkpctl.c   -> source file for user-program
+ - CSE-506/bkpctl     -> executable for user-program
+ - CSE-506/tests/     -> tests for the module
+ - CSE-506/compile.sh -> compile command for user program
+
+************************************************************************************************
+* DESIGN
+
+A. Metadata File
+
+For the backup system, I create a metadata file residing in the same folder which will contain the 
+backup info for a given file. It has an extension of ".bkpm". So, for example, if file1.txt was 
+opened or created, a metadata file called file1.txt.bkpm will be created.
+
+The contents of the metadata comprise of exactly six bits. The first three bits for number of backups
+present currently and the last three bits for the backup number of the newest backup. When a new 
+metadata file is created it is set to 000000. If one backup file is created 001001 and if there were
+24 backup files (and let's assume max backups is more than 24) then the file will read as 024024.
+
+B. Backup Creation
+
+When a file is written to, a backup is created. The backup itself is a copy of the most recent 
+version of the file. It has only rwx permissions for user.
+
+B. Recycling backups 
+
+A limit for number of backups (N) can be set at mount time using -o maxver=N. If none are specified
+then a default of 10 is used. Once the limit of N is reached, the oldest backup is first deleted and
+a new backup is created. To find the oldest backup, we read the associated metadata file and calculate
+the oldest backup as follows:
+
+oldest_backup = newest_backup - total_backups
+
+C. Exclusions list
+
+The following files are not backed up:
+	1. Backup files
+	2. Backup-Metadata files
+	3. Hidden files
+	4. Vim temp files
+
+D. Limitations
+
+Since only three bits are used to store number of backups, the total number can go upto 999. If that
+number is exceeded, then the existing backups are renamed to start from 1 to N and the metadata
+file is updated accordingly. So, technically N < 1000.
+
+***************************************************************************************************
+
+* User Program
+
+./bkpctl -[ld:v:r:] FILE
+
+FILE: the file's name to operate on
+-l: option to "list versions"
+-d ARG: option to "delete" versions; ARG can be "newest", "oldest", or "all"
+-v ARG: option to "view" contents of versions (ARG: "newest", "oldest", or N)
+-r ARG: option to "restore" file (ARG: "newest", "oldest" or N)
+	(where N is a number such as 1, 2, 3, ...)
+
+ALl these functionalities were implemented using IOCTLs.
+
+A. List versions
+
+This lists the existing backup versions.
+
+B. Delete Versions
+
+This deletes the backups based on teh argument passed.
+
+C. View version
+
+This will show 4096 bytes of the version at a time with a prompt to go on (y/n).
+
+D. Restore version
+
+This creates a copy of the version specifed as a ".bkpt" file which is available for the perusal 
+of the user.
+
+**************************************************************************************************
+
+* Hiding backup versions
+
+ls command does not show the backup versions to the user at the mount point. This was implemented
+using a custom filldir callback function fed to the readdir function.
+
+*************************************************************************************************
+
